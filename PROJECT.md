@@ -56,6 +56,12 @@ on every locked decision and every deploy, without exception.
 - 2026-10-28 — Slice 1: initial commit pushed to `main`, deploy to
   Sirius started (details + verification to be appended once the
   Tailscale gate check passes).
+- 2026-10-28 — Deploy fixes (found on first Sirius build, before any
+  container went live): (1) web Dockerfile now copies
+  `package-lock.json` alongside `package.json` — `npm ci` previously
+  failed without it; (2) Argon2 PHC hashes must be `$$`-escaped in
+  `.env` because Docker Compose interpolates `$argon2id`/`$v`/`$m` as
+  variables and corrupts the hash — see `.env.example`.
 
 ## Phase plan (in order, do not skip)
 
