@@ -1,14 +1,15 @@
-"""Harlearn API, slice 1: single-password gate + dashboard auth only.
+"""Harlearn API, phase 2: gate + node graphs + frozen runs + comparisons.
 
-Endpoints:
-  GET  /health             - liveness, no auth
-  POST /api/auth/login     - {password} -> session cookie (rate limited)
-  GET  /api/auth/me        - 200 when a valid session cookie is present
-  GET  /api/auth/csrf      - CSRF token for the current session
-  POST /api/auth/logout    - requires session cookie + X-CSRF-Token, revokes
+Slice 1 endpoints (auth) plus phase 2 (see app/phase2.py):
+  POST /api/models/fetch   - transient {base_url}/models fetch, stores nothing
+  CRUD /api/graphs         - editable node graphs (Model nodes carry provider settings)
+  POST /api/runs            - run a frozen graph version (OpenAI-compatible)
+  GET  /api/runs, /api/runs/{id}
+  GET  /api/comparisons     - two runs side by side + graph diff
+  CRUD /api/experiments + rubric scores
 
-There is no registration, no users table, and no provider/LLM code in
-slice 1. See ARCHITECTURE.md for what is planned but NOT implemented.
+There is deliberately NO separate provider-connection entity: provider
+settings live inside Model nodes (corrected spec, 2026-10-28).
 """
 
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
@@ -16,17 +17,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session as DbSession
 
-from . import auth, config, security
+from . import auth, config, phase2, security
 from .db import get_db
 
-app = FastAPI(title="Harlearn API", version="0.1.0-slice1")
+app = FastAPI(title="Harlearn API", version="0.2.0-phase2")
+app.include_router(phase2.router)
 
 # CORS is deliberately NOT a wildcard: only the web origin from env.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[config.WEB_ORIGIN],
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type", "X-CSRF-Token"],
 )
 
@@ -63,7 +65,7 @@ def _set_session_cookie(response: Response, raw_token: str) -> None:
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "slice": 1}
+    return {"status": "ok", "phase": 2}
 
 
 @app.post("/api/auth/login")

@@ -5,10 +5,15 @@ a harness from layers (soul, system prompt, memory, skills, tools, output
 schema), run the same task under different harnesses, save every run, and
 compare them. Later phases add model/provider benchmarking.
 
-**Slice 1 scope — and only this scope:** a single-password gate plus a
-dashboard shell. There is no node canvas, no provider connection, no run,
-no comparison, and no benchmark yet. Sidebar items for those phases are
-present in the dashboard but disabled and labelled “Segera hadir”.
+**Phase 2 scope (built locally, not yet pushed/deployed):** node canvas
+plus frozen runs plus comparisons plus experiments. Node types: Task,
+Soul, System Prompt, Memory, Model, Output. A “harness profile” is a
+saved graph, not a separate form. Provider settings live INSIDE the
+Model node (base_url, api_key, model, temperature) — there is NO
+separate provider-connection page or entity. Sidebar: Dashboard, Graph,
+History, Perbandingan, Benchmark (still “Segera hadir”).
+
+**Slice 1 scope (live):** a single-password gate plus a dashboard shell.
 
 Theme: **Graphite Volt** — background `#111827`, surface `#1F2937`,
 accent lime `#A3E635`, secondary cyan `#22D3EE`, text `#F3F4F6`,
@@ -35,8 +40,11 @@ python ../../tools/hash_password.py
 # Paste the printed hash into your environment as HARLEARN_APP_PASSWORD_HASH.
 
 # 3. Start the API (SQLite for local dev only; compose uses PostgreSQL)
+# HARLEARN_FERNET_KEY is REQUIRED in phase 2 (encrypts Model-node api_keys):
+#   python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 DATABASE_URL="sqlite:///./dev.db" \
 HARLEARN_APP_PASSWORD_HASH="<paste hash here>" \
+HARLEARN_FERNET_KEY="<paste fernet key here>" \
 WEB_ORIGIN="http://127.0.0.1:3000" \
 uvicorn app.main:app --host 127.0.0.1 --port 8000
 
@@ -58,8 +66,9 @@ python -m pytest tests/ -q
 
 ```bash
 cp .env.example .env
-# Edit .env: set TAILSCALE_IP to the host's Tailscale IP and
-# HARLEARN_APP_PASSWORD_HASH from tools/hash_password.py.
+# Edit .env: set TAILSCALE_IP to the host's Tailscale IP,
+# HARLEARN_APP_PASSWORD_HASH from tools/hash_password.py, and
+# HARLEARN_FERNET_KEY (phase 2, required — see step 3 above).
 # NEVER commit .env, a real Tailscale IP, a domain, or any password.
 docker compose up -d --build
 # Web UI: http://<TAILSCALE_IP>:8100  (Tailscale only, never 0.0.0.0)

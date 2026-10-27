@@ -10,11 +10,15 @@ benchmarking models/providers. The user learns best by seeing two runs
 side by side when exactly one thing changes — not by reading definitions.
 
 Core workflow (target, not slice 1):
-1. Connect an OpenAI-compatible provider (base URL + API key + model).
+1. Build a graph of nodes: Task, Soul, System Prompt, Memory, Model,
+   Output. Provider settings (base URL + API key + model + temperature)
+   live INSIDE the Model node — there is no separate provider-connection
+   page or entity (corrected spec, 2026-10-28).
 2. Assemble a harness from layers: soul, system prompt, memory, user
-   profile, skills, tools/MCP, output schema/parser.
-3. Or load a preset from an agent (e.g. Hermes) — as a *snapshot* into a
-   Harlearn profile, never as a live link to that agent's home directory.
+   profile, skills, tools/MCP, output schema/parser — each layer a node
+   wired into the Model node.
+3. Or load a preset from an agent (e.g. Hermes) — as a saved graph
+   template, never as a live link to that agent's home directory.
 4. Run the same task, save the run, compare runs, score them on a rubric.
 
 ## Locked decisions (2026-10-28)
@@ -28,10 +32,32 @@ Core workflow (target, not slice 1):
 - **Auth:** Tailscale-only + **single app password**. No registration,
   no multi-user, no roles in slice 1. Gate = one Argon2-hashed password,
   HttpOnly session cookie, Lock/Logout button in the header.
-- **Lab shape (future):** node-style canvas like n8n/ComfyUI. Canvas =
-  recipe (graph); Run = execution of a frozen graph version; Experiment =
-  a set of runs + rubric. Recording lives in History/Experiments, not
+- **Lab shape (future, corrected 2026-10-28 by the user):** node-style
+  canvas like n8n/ComfyUI, and EVERY harness layer IS a node — Soul,
+  System Prompt, Memory, Skill, etc. are nodes wired into a Model node.
+  A "harness profile" is NOT a separate form: it is a SAVED GRAPH (a
+  saved collection of nodes + connections). A preset such as Hermes is
+  a saved graph template, not a live link. Canvas = recipe (graph);
+  Run = execution of a frozen graph version; Experiment = a set of
+  runs + rubric + notes. Recording lives in History/Experiments, not
   inside the canvas. Custom nodes are planned for later, not slice 1.
+- **Provider settings live in the Model node (corrected 2026-10-28
+  by the user):** there is NO separate provider-connection page or
+  entity. Base URL, API key, model fetch, and model choice are all
+  Model-node settings. A Model node's API key is stored
+  Fernet-encrypted, displayed masked, and never returned in full;
+  a saved graph that is re-saved without changing the key keeps
+  the existing encrypted key.
+- **Comparison model (clarified 2026-10-28):** compare two RUNS from
+  two graphs/versions, side by side — not two competing nodes inside
+  one graph. Each run stores a frozen snapshot of the whole graph
+  (every node's config at run time) plus a per-node execution trace
+  (input, output, tokens, duration), so clicking a node in History
+  shows what it contained THEN, not what it contains now. The
+  comparison view shows, top to bottom: graph diff (which nodes
+  changed/added/removed, with config diffs), the two outputs side
+  by side, metrics (tokens, latency), rubric scores, and the
+  experiment's conclusion note.
 - **Stack:** Next.js (web) + FastAPI (API) + PostgreSQL, monorepo,
   Docker Compose on the user's Sirius VPS, published only on the
   Tailscale IP. No public ports.
@@ -79,18 +105,42 @@ on every locked decision and every deploy, without exception.
   issued, logout 200, `/me` after logout 401. Note: changing the
   app password still requires editing `.env` on Sirius + restart
   (in-app password change is a later phase, not slice 1).
+- 2026-10-28 — User visual confirmation (screenshot): Graphite Volt
+  dashboard renders correctly on his device and the Lock button
+  works. Slice 1 is closed from the user's side.
+
+## Fase 2 (built locally 2026-10-28; NOT pushed, NOT deployed)
+
+Node canvas (drag, right-click Add Node + node menu, inspector,
+ports) + Model nodes carrying their own provider settings + Save Graph
++ Run from a frozen GraphVersion + History (frozen snapshot + per-node
+trace) + Perbandingan 2 run (graph diff + outputs + metrics) +
+Experiments (hypothesis + runs + rubric scores + conclusion notes).
+Backend: FastAPI + Alembic 0002 (`graphs`, `graph_versions`, `runs`,
+`experiments`, `experiment_runs`, `rubric_scores`). Model api_keys are
+Fernet-encrypted in the DB and masked in the API; the `/models` fetch
+endpoint is transient and stores nothing. See ARCHITECTURE.md for the
+verified test results and for what was NOT verified locally (no Docker,
+no PostgreSQL here — migration 0002 verified on SQLite only; no
+external provider was reachable from the build VM — LLM runs were
+verified against a local fake OpenAI-compatible server).
+
+Correction applied during phase 2 (user instruction, 2026-10-28):
+an earlier draft of phase 2 had a SEPARATE provider-connection entity
+and a Koneksi page. That was CANCELLED before any of it was built
+into a migration or route: provider settings live inside the Model
+node only, and the phase-2 sidebar is Dashboard, Graph, History,
+Perbandingan, Benchmark (Segera hadir). The cancelled design must not
+be reintroduced without a new explicit user decision.
 
 ## Phase plan (in order, do not skip)
 
-1. ~~Slice 1: gate + dashboard~~ (local build; deploy is a separate step)
-2. Provider connections (OpenAI-compatible, Fernet-encrypted keys, masked
-   display, `/models` fetch, mini connection test) — pattern already
-   proven in Rephore/Lifunze.
-3. Harness profiles + node canvas (linear assembly first; DAG data model
-   from the start) + Run recording + History.
-4. Experiments & comparisons (run diffs, rubric scores).
-5. Benchmark battery (same tasks, temperature 0, cost/latency table).
-6. Agent loop: tools/MCP with an allowlist and a sandbox. Last, not first.
+1. ~~Slice 1: gate + dashboard~~ (live on Sirius)
+2. ~~Fase 2: node canvas + Model-node providers + frozen runs + comparisons + experiments~~ (local build; push + deploy are a separate step)
+3. Canvas lanjutan + preset graph template (mis. gaya Hermes, sebagai
+   snapshot graph, bukan live link) + custom node types.
+4. Benchmark battery (same tasks, temperature 0, cost/latency table).
+5. Agent loop: tools/MCP with an allowlist and a sandbox. Last, not first.
 
 ## Rules for this repo
 

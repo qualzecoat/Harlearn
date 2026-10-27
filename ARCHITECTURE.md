@@ -1,4 +1,11 @@
-# Harlearn — Architecture (slice 1)
+# Harlearn — Architecture (phase 2)
+
+> Correction (2026-10-28, user instruction): phase 2 was first drafted
+> with a SEPARATE provider-connection entity and a Koneksi page. That
+> draft was cancelled before it reached a migration or a route.
+> Provider settings live INSIDE Model nodes only (see below). Do not
+> reintroduce a separate connection entity without a new explicit
+> user decision.
 
 ## System layout
 
@@ -60,16 +67,99 @@ sees the web origin (`WEB_ORIGIN`), never `*`.
    The final assembled prompt is stored in full — it is the primary
    learning artefact.
 
-## Planned but NOT implemented in slice 1
+## Phase 2 data model (implemented)
 
-- **LLMClient provider abstraction** — a normalised interface
-  (`chat(messages, params) -> {text, usage, latency, raw}`) with an
-  OpenAI-compatible adapter first. No provider code exists in slice 1;
-  do not describe Harlearn as able to call a model yet.
-- Provider connections (Fernet-encrypted API keys, masked display,
-  `/models` fetch, connection test).
-- Node canvas, graphs, runs, experiments, comparisons, benchmarks,
-  tools/MCP, custom nodes.
+Tables (Alembic 0002, on top of 0001 — 0001 is never edited):
+`graphs` (editable nodes + edges JSON), `graph_versions` (frozen
+snapshot + SHA-256 content hash, immutable by convention),
+`runs` (task, assembled prompt, raw output, token in/out nullable,
+usage_available flag, latency, status, error, per-node traces JSON),
+`experiments`, `experiment_runs`, `rubric_scores`. Every table carries
+`owner_id` default `'solo'`. There is NO `connections` table.
+
+Node types: Task, Soul, SystemPrompt, Memory, Model, Output.
+Edges carry `from_port`/`to_port`; Model input ports are semantic:
+`task`, `soul`, `system`, `memory`. Execution validates: exactly one
+enabled Model node, a Task connected to it (otherwise a clear error),
+at most one node per role feeding it, and no cycles over enabled nodes.
+Disabled nodes are recorded in traces as `skipped` with 0 tokens;
+enabled-but-unconnected nodes are `unused`.
+
+### Prompt assembly (semantic order, never canvas position)
+Soul → System Prompt → Memory as system messages, then Task as the
+user message. Canvas x/y affects display only.
+
+### Model-node provider settings and key handling
+A Model node's config is `{base_url, api_key, model, temperature}`.
+On save, the backend (`app/graph_keys.py`) encrypts a newly typed
+`api_key` with Fernet (`HARLEARN_FERNET_KEY` from env, no default, no
+auto-generation — a generated-on-startup key would orphan stored keys
+on restart) and stores `api_key_enc` + `api_key_masked` in the graph
+JSON. The API NEVER returns the full key: served nodes carry
+`api_key: ""` plus `api_key_masked` and `api_key_set`. The inspector
+shows the masked value as placeholder text, never as the input value,
+so resaving without typing a key preserves the old encrypted key
+(it is never overwritten with a masked placeholder). GraphVersion
+snapshots store the same encrypted form. At run time the key is
+decrypted only in memory for the one provider call and never logged.
+`POST /api/models/fetch` takes base_url + api_key transiently, calls
+`{base_url}/models`, returns model ids, and stores nothing.
+
+### LLM call
+`POST {base_url}/chat/completions` (OpenAI-compatible) with the
+assembled messages and the Model node's temperature. Token usage comes
+ONLY from the response `usage` object; if the provider omits it,
+`token_in`/`token_out` are null and `usage_available` is false — no
+local estimate is ever presented as real usage. Provider HTTP errors
+and unreachable providers produce a `failed` run with a readable error,
+not a crash and not a fake success. Provider clients are created with
+`trust_env=False` so host proxy env vars cannot break or reroute calls.
+
+### Frontend routes (phase 2)
+`/` dashboard, `/gate`, `/graph` (canvas: drag, right-click Add Node
+and node menu Duplicate/Cut/Copy/Paste/Delete/Disable-Enable, port
+click-to-connect, right inspector Config / Last Input-Output / Help,
+Save Graph, Run), `/history` (runs + frozen snapshot + traces),
+`/perbandingan` (two runs + graph diff + rubric + experiment notes).
+All new pages are protected by the same gate (middleware redirect +
+`/api/auth/me` check + API session validation). Benchmark stays
+disabled and labelled “Segera hadir”.
+
+## Planned but NOT implemented (after phase 2)
+
+- Hermes-style preset graph template (a saved graph, not a live link).
+- Custom node types (versioned NodeType registry, pinned in graphs).
+- Benchmark battery, tools/MCP execution, agent loop (last, not first).
+
+## Known phase-2 gaps and limitations (honest, do not claim otherwise)
+
+- **Alembic 0002 was verified on SQLite only in the build environment**
+  (no Docker, no PostgreSQL available there), exactly like 0001 was
+  before its Sirius deploy. `alembic upgrade head` against a real empty
+  PostgreSQL database MUST be run on Sirius before claiming phase 2
+  works there.
+- **Docker images were not built in the build environment.** `docker
+  compose up -d --build` must be run on the deploy host first.
+- **No external OpenAI-compatible provider was reachable from the
+  build VM.** LLM runs were verified against a local fake
+  OpenAI-compatible server in the test suite (prompt order, traces,
+  usage, frozen snapshots, comparisons). A run against a real provider
+  (e.g. 9Router) from Sirius is still unverified and must be tested
+  after deploy.
+- **Deploy prerequisite (new in phase 2):** Sirius `.env` MUST gain
+  `HARLEARN_FERNET_KEY` before phase 2 is deployed — without it,
+  saving a Model node with a new api_key returns 503 and runs cannot
+  decrypt stored keys. Generate it once and keep it; changing it later
+  orphans all stored Model-node keys.
+- **Canvas is minimal, not a full ComfyUI/n8n editor:** no pan/zoom,
+  no minimap, no multi-select, no undo/redo, edges are straight lines
+  (not bezier), and the graph list is a simple dropdown. The data
+  model is already a DAG with frozen versions, so these are UI work,
+  not model rework.
+- **Runs execute synchronously** in the request (up to a 120 s provider
+  timeout). There is no job queue/worker yet; long or parallel runs
+  will block the request. A worker belongs to a later phase, not this one.
+- **Rate limiting is still in-memory per process** (see slice-1 gaps).
 
 ## Known slice-1 gaps and limitations
 

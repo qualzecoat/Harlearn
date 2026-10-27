@@ -33,7 +33,9 @@ button {
   font: inherit;
 }
 
-input {
+input,
+textarea,
+select {
   font: inherit;
   background: var(--bg);
   color: var(--text);
@@ -41,6 +43,11 @@ input {
   border-radius: 8px;
   padding: 10px 12px;
   width: 100%;
+}
+
+textarea {
+  min-height: 90px;
+  resize: vertical;
 }
 
 .btn {

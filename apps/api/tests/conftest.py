@@ -12,6 +12,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 os.environ["DATABASE_URL"] = "sqlite:///./test_harlearn.db"
 os.environ["WEB_ORIGIN"] = "http://127.0.0.1:3000"
+# Test-only Fernet key (never a production credential). Production sets
+# HARLEARN_FERNET_KEY in the deployment .env file.
+from cryptography.fernet import Fernet  # noqa: E402
+
+os.environ["HARLEARN_FERNET_KEY"] = Fernet.generate_key().decode()
 
 from argon2 import PasswordHasher  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
