@@ -4,4 +4,6 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 EXPOSE 8000
-ENTRYPOINT ["./entrypoint.sh"]
+# Run via sh, not direct exec: GitHub push_files does not preserve the
+# executable bit, so ./entrypoint.sh may arrive non-executable on deploy.
+ENTRYPOINT ["sh", "./entrypoint.sh"]

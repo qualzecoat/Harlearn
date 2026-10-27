@@ -64,6 +64,10 @@ on every locked decision and every deploy, without exception.
   variables and corrupts the hash — see `.env.example`.
 - 2026-10-28 — Deploy fix 2: web Dockerfile no longer copies a
   non-existent `public/` directory (build failed at that COPY step).
+- 2026-10-28 — Deploy fix 3: API entrypoint now runs via `sh` —
+  GitHub push_files does not preserve the executable bit, so
+  `entrypoint.sh` arrived non-executable on Sirius and the API
+  container failed with permission denied.
 
 ## Phase plan (in order, do not skip)
 
