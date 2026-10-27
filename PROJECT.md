@@ -68,6 +68,17 @@ on every locked decision and every deploy, without exception.
   GitHub push_files does not preserve the executable bit, so
   `entrypoint.sh` arrived non-executable on Sirius and the API
   container failed with permission denied.
+- 2026-10-28 — Slice 1 LIVE on Sirius (commit `041a88f`):
+  `http://100.71.239.88:8100` via Tailscale only (no 0.0.0.0 bind;
+  API and DB internal only). Compose: `/opt/sirius/compose/harlearn`,
+  `docker compose up -d --build`. Verified on production:
+  Alembic 0001 on real PostgreSQL (`sessions`, `settings`,
+  `alembic_version`), hash in container is single-`$` Argon2,
+  `/gate` 200, `/` without cookie 307 to `/gate`, login 200
+  (`owner: solo`), `/me` 200, dashboard with cookie 200, CSRF
+  issued, logout 200, `/me` after logout 401. Note: changing the
+  app password still requires editing `.env` on Sirius + restart
+  (in-app password change is a later phase, not slice 1).
 
 ## Phase plan (in order, do not skip)
 
