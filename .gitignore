@@ -1,0 +1,14 @@
+.env
+.env.local
+__pycache__/
+*.py[cod]
+.pytest_cache/
+node_modules/
+.next/
+apps/web/out/
+apps/api/test_*.db
+apps/api/*.db
+pgdata/
+.venv/
+venv/
+.DS_Store

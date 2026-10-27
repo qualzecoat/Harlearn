@@ -1,0 +1,54 @@
+# Harlearn — slice 1: gate + dashboard.
+#
+# Network model (matches the Sirius pattern used by the user's other
+# services): only the WEB service is published, and only on the Tailscale
+# IP supplied at deploy time. The API and the database are reachable
+# ONLY on the internal compose network (no published ports).
+#
+#   TAILSCALE_IP=<tailnet IP of the host, set in .env at deploy time>
+#   docker compose up -d --build
+#
+# Local fallback (no Tailscale): TAILSCALE_IP defaults to 127.0.0.1, so
+# the web UI is reachable only from the host itself. NEVER set this to
+# 0.0.0.0 and NEVER commit a real Tailscale IP or domain into the repo.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-harlearn}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-harlearn}
+      POSTGRES_DB: ${POSTGRES_DB:-harlearn}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-harlearn}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: ./apps/api
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-harlearn}:${POSTGRES_PASSWORD:-harlearn}@db:5432/${POSTGRES_DB:-harlearn}
+      HARLEARN_APP_PASSWORD_HASH: ${HARLEARN_APP_PASSWORD_HASH}
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://127.0.0.1:8100}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+    # No `ports:` — internal only.
+
+  web:
+    build:
+      context: ./apps/web
+      args:
+        NEXT_PUBLIC_API_URL: ""
+        API_INTERNAL_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "${TAILSCALE_IP:-127.0.0.1}:8100:3000"
+
+volumes:
+  pgdata:
