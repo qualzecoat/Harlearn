@@ -62,6 +62,8 @@ on every locked decision and every deploy, without exception.
   failed without it; (2) Argon2 PHC hashes must be `$$`-escaped in
   `.env` because Docker Compose interpolates `$argon2id`/`$v`/`$m` as
   variables and corrupts the hash — see `.env.example`.
+- 2026-10-28 — Deploy fix 2: web Dockerfile no longer copies a
+  non-existent `public/` directory (build failed at that COPY step).
 
 ## Phase plan (in order, do not skip)
 
