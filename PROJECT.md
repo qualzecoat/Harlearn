@@ -108,6 +108,20 @@ on every locked decision and every deploy, without exception.
 - 2026-10-28 — User visual confirmation (screenshot): Graphite Volt
   dashboard renders correctly on his device and the Lock button
   works. Slice 1 is closed from the user's side.
+- 2026-10-28 — Fase 2 LIVE on Sirius (commit `5bfbee4`):
+  canvas node minimal + save graph + run + perbandingan, provider
+  DI DALAM node Model (no separate connection page, per user
+  correction). Deploy fixes: compose now passes
+  `HARLEARN_FERNET_KEY` to the API (missing in the first phase-2
+  build); Sirius `.env` gained `HARLEARN_FERNET_KEY` (never in repo,
+  never rotate casually — rotating it orphans stored Model keys).
+  Verified on production: Alembic 0002 on real PostgreSQL (9 tables),
+  `/graph`, `/history`, `/perbandingan` 307 without cookie, graph
+  CRUD with Model key masked (`api_key` empty, `api_key_set` true)
+  and the test graph deleted afterwards. NOT yet verified: a real
+  LLM run against a real provider from Sirius (needs the user's own
+  provider key in a Model node) and visual inspection of the new
+  canvas by the user.
 
 ## Fase 2 (built locally 2026-10-28; NOT pushed, NOT deployed)
 
